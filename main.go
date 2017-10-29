@@ -27,11 +27,12 @@ type sslContext struct {
 type clusters []cluster
 
 type cluster struct {
-	Name             string `json:"name"`
-	Type             string `json:"type"`
-	ServiceName      string `json:"service_name"`
-	ConnectTimeoutMS int    `json:"connect_timeout_ms"`
-	LBtype           string `json:"lb_type"`
+	Name                     string `json:"name"`
+	Type                     string `json:"type"`
+	ServiceName              string `json:"service_name"`
+	ConnectTimeoutMS         int    `json:"connect_timeout_ms,omitempty"`
+	MaxRequestsPerConnection int    `json:"max_requests_per_connection,omitempty"`
+	LBtype                   string `json:"lb_type"`
 }
 
 type virtualHosts []virtualHost
@@ -197,7 +198,8 @@ func main() {
 				ServiceName:      service.Service,
 				Type:             "sds",
 				LBtype:           "least_request",
-				ConnectTimeoutMS: 1000,
+				ConnectTimeoutMS: 2000,
+				// MaxRequestsPerConnection: 1, // disable keep-alive as a test
 			}
 
 			// Append the cluster
