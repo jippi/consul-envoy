@@ -82,26 +82,27 @@ func main() {
 		fmt.Printf("/v1/routes/%s/%s/%s\n", params["route_config_name"], params["service_cluster"], params["service_node"])
 
 		res := make([]virtualHost, 0)
-
 		seen := make(map[string]string)
 
-		catalogNode, _, _ := consul.Catalog().Node(params["service_node"], nil)
-		for _, service := range catalogNode.Services {
-			if _, ok := seen[service.Service]; ok {
+		catalog, _, _ := consul.Catalog().Node(params["service_node"], &api.QueryOptions{AllowStale: true})
+		for _, service := range catalog.Services {
+			serviceName := service.Service
+
+			if _, ok := seen[serviceName]; ok {
 				continue
 			}
 
-			seen[service.Service] = service.Service
+			seen[serviceName] = serviceName
 
 			vhost := virtualHost{
-				Name: service.Service,
+				Name: serviceName,
 				Domains: []string{
-					fmt.Sprintf("%s.service.%s", service.Service, domain),
-					fmt.Sprintf("*.%s.service.%s", service.Service, domain),
+					fmt.Sprintf("%s.service.%s", serviceName, domain),
+					fmt.Sprintf("*.%s.service.%s", serviceName, domain),
 				},
 				Routes: []route{
 					route{
-						Cluster:      service.Service,
+						Cluster:      serviceName,
 						Prefix:       "/",
 						UseWebsocket: true,
 					},
@@ -124,7 +125,7 @@ func main() {
 		fmt.Printf("/v1/registration/%s\n", params["service_name"])
 
 		hosts := make([]serviceHost, 0)
-		checks, _, _ := consul.Health().Service(params["service_name"], "", true, nil)
+		checks, _, _ := consul.Health().Service(params["service_name"], "", true, &api.QueryOptions{AllowStale: true})
 
 		for _, entry := range checks {
 			hosts = append(hosts, serviceHost{
@@ -153,7 +154,7 @@ func main() {
 		// local clusters for the consul agent we are attached to
 		localClusters := make([]cluster, 0)
 
-		nodeCatalog, _, _ := consul.Catalog().Node(params["service_node"], nil)
+		nodeCatalog, _, _ := consul.Catalog().Node(params["service_node"], &api.QueryOptions{AllowStale: true})
 		for _, service := range nodeCatalog.Services {
 			// Always construct the service host struct
 			serviceHost := host{
