@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 
@@ -104,7 +105,7 @@ func main() {
 					route{
 						Cluster:      serviceName,
 						Prefix:       "/",
-						UseWebsocket: true,
+						UseWebsocket: false,
 					},
 				},
 			}
@@ -119,7 +120,7 @@ func main() {
 		w.Write(d)
 	})
 
-	// SDS - https://www.envoyproxy.io/envoy/configuration/cluster_manager/sds_api
+	// SDS - Service discovery service - https://www.envoyproxy.io/envoy/configuration/cluster_manager/sds_api
 	router.HandleFunc("/v1/registration/{service_name}", func(w http.ResponseWriter, r *http.Request) {
 		params := mux.Vars(r)
 		fmt.Printf("/v1/registration/%s\n", params["service_name"])
@@ -128,10 +129,28 @@ func main() {
 		checks, _, _ := consul.Health().Service(params["service_name"], "", true, &api.QueryOptions{AllowStale: true})
 
 		for _, entry := range checks {
-			hosts = append(hosts, serviceHost{
-				IP:   entry.Service.Address,
-				Port: entry.Service.Port,
-			})
+			// check if it's an valid IP
+			if ip := net.ParseIP(entry.Service.Address); ip != nil {
+				hosts = append(hosts, serviceHost{
+					IP:   entry.Service.Address,
+					Port: entry.Service.Port,
+				})
+				continue
+			}
+
+			// if not an IP, resolve the hostname
+			ips, err := net.LookupIP(entry.Service.Address)
+			if err != nil {
+				continue
+			}
+
+			// add reach resolved IP from the hostname to the registration
+			for _, ip := range ips {
+				hosts = append(hosts, serviceHost{
+					IP:   ip.String(),
+					Port: entry.Service.Port,
+				})
+			}
 		}
 
 		// consturct the valid response
@@ -177,7 +196,7 @@ func main() {
 				Name:             service.Service,
 				ServiceName:      service.Service,
 				Type:             "sds",
-				LBtype:           "round_robin",
+				LBtype:           "least_request",
 				ConnectTimeoutMS: 1000,
 			}
 
