@@ -103,7 +103,7 @@ func main() {
 					route{
 						Cluster:      service.Service,
 						Prefix:       "/",
-						UseWebsocket: false,
+						UseWebsocket: true,
 					},
 				},
 			}
