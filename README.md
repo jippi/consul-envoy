@@ -1,8 +1,10 @@
-## What
+## About consul-envoy
 
 This project aim to be a quick'n'dirty way to get Envoy and Consul talking nicely, so any Consul service URL can be routed through evnoy.
 
 The current code allows to route `*.service.consul` to the backends availble in the Consul catalog
+
+Currently [`RDS (Route discovery service)`](https://www.envoyproxy.io/envoy/configuration/http_conn_man/rds), [`SDS - Service discovery service`](https://www.envoyproxy.io/envoy/configuration/cluster_manager/sds_api) and [`CDS - Cluster discovery service`](https://www.envoyproxy.io/envoy/configuration/cluster_manager/cds) is implemented
 
 ### example envoy config
 
