@@ -6,6 +6,10 @@ The current code allows to route `*.service.consul` to the backends availble in 
 
 Currently [`RDS - Route discovery service`](https://www.envoyproxy.io/envoy/configuration/http_conn_man/rds), [`SDS - Service discovery service`](https://www.envoyproxy.io/envoy/configuration/cluster_manager/sds_api) and [`CDS - Cluster discovery service`](https://www.envoyproxy.io/envoy/configuration/cluster_manager/cds) is implemented
 
+### Project goal
+
+Making using Envoy with Consul as easy as [fabio](https://github.com/fabiolb/fabio) and [traefik](https://github.com/containous/traefik), possible exposting additional configuration to envoy through Consul Service tags (similar to fabio `urlprefix-*` configuration).
+
 ### Configuration
 
 - `PORT` (env) - the HTTP port to listen on (example: `8877`)
