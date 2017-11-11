@@ -14,6 +14,8 @@ Currently [`RDS - Route discovery service`](https://www.envoyproxy.io/envoy/conf
 
 ### example envoy config
 
+The configuration assume that this project is named `envoy-consul` in the Consul catalog and listens on port `8877`
+
 ```json
 {
     "listeners": [
@@ -77,17 +79,6 @@ Currently [`RDS - Route discovery service`](https://www.envoyproxy.io/envoy/conf
         "clusters": [
             {
                 "name": "rds_http",
-                "type": "logical_dns",
-                "lb_type": "round_robin",
-                "connect_timeout_ms": 1000,
-                "hosts": [
-                    {
-                        "url": "tcp://consul-envoy.service.consul:8877"
-                    }
-                ]
-            },
-            {
-                "name": "rds_https",
                 "type": "logical_dns",
                 "lb_type": "round_robin",
                 "connect_timeout_ms": 1000,
