@@ -78,7 +78,7 @@ func main() {
 
 	router := mux.NewRouter()
 
-	// RDS - https://www.envoyproxy.io/envoy/configuration/http_conn_man/rds
+	// RDS - Route discovery service - https://www.envoyproxy.io/envoy/configuration/http_conn_man/rds
 	router.HandleFunc("/v1/routes/{route_config_name}/{service_cluster}/{service_node}", func(w http.ResponseWriter, r *http.Request) {
 		params := mux.Vars(r)
 		fmt.Printf("/v1/routes/%s/%s/%s\n", params["route_config_name"], params["service_cluster"], params["service_node"])
@@ -106,7 +106,7 @@ func main() {
 					route{
 						Cluster:      serviceName,
 						Prefix:       "/",
-						UseWebsocket: false,
+						UseWebsocket: true,
 					},
 				},
 			}
@@ -163,7 +163,7 @@ func main() {
 		w.Write(bytes)
 	})
 
-	// CDS - https://www.envoyproxy.io/envoy/configuration/cluster_manager/cds
+	// CDS - Cluster discovery service - https://www.envoyproxy.io/envoy/configuration/cluster_manager/cds
 	router.HandleFunc("/v1/clusters/{service_cluster}/{service_node}", func(w http.ResponseWriter, r *http.Request) {
 		params := mux.Vars(r)
 		fmt.Printf("/v1/clusters/%s/%s\n", params["service_cluster"], params["service_node"])
