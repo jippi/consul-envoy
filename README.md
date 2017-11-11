@@ -9,8 +9,8 @@ Currently [`RDS - Route discovery service`](https://www.envoyproxy.io/envoy/conf
 ### building
 
 `make requirements` to install Go Vendor and fetch dependencies
-`make install` to build the binary (`consul-envoy`) into `${GO_PATH}/bin`
-`make dist` to build platform specific binary into `build/consul-enovy-${OS}-${ARCH}`
+`make install` to build the binary (`consul-envoy`) into `${GOPATH}/bin`
+`make dist` to build platform specific binary into `./build/consul-enovy-${OS}-${ARCH}`
 
 ### example envoy config
 
