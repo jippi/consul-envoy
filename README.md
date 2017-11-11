@@ -4,7 +4,13 @@ This project aim to be a quick'n'dirty way to get Envoy and Consul talking nicel
 
 The current code allows to route `*.service.consul` to the backends availble in the Consul catalog
 
-Currently [`RDS (Route discovery service)`](https://www.envoyproxy.io/envoy/configuration/http_conn_man/rds), [`SDS - Service discovery service`](https://www.envoyproxy.io/envoy/configuration/cluster_manager/sds_api) and [`CDS - Cluster discovery service`](https://www.envoyproxy.io/envoy/configuration/cluster_manager/cds) is implemented
+Currently [`RDS - Route discovery service`](https://www.envoyproxy.io/envoy/configuration/http_conn_man/rds), [`SDS - Service discovery service`](https://www.envoyproxy.io/envoy/configuration/cluster_manager/sds_api) and [`CDS - Cluster discovery service`](https://www.envoyproxy.io/envoy/configuration/cluster_manager/cds) is implemented
+
+### building
+
+`make requirements` to install Go Vendor and fetch dependencies
+`make install` to build the binary (`consul-envoy`) into `${GO_PATH}/bin`
+`make dist` to build platform specific binary into `build/consul-enovy-${OS}-${ARCH}`
 
 ### example envoy config
 

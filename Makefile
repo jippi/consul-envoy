@@ -10,14 +10,13 @@ COMMIT		    ?=latest
 $(BUILD_DIR):
 	mkdir -p $@
 
-.PHONY: install
-install:
+.PHONY: requirements
+requirements:
 	go get github.com/kardianos/govendor
 	govendor sync
 
-.PHONY: build
-build: install
-	govendor sync
+.PHONY: install
+install: requirements
 	go install
 
 .PHONY: fmt
