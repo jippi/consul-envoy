@@ -6,13 +6,18 @@ The current code allows to route `*.service.consul` to the backends availble in 
 
 Currently [`RDS - Route discovery service`](https://www.envoyproxy.io/envoy/configuration/http_conn_man/rds), [`SDS - Service discovery service`](https://www.envoyproxy.io/envoy/configuration/cluster_manager/sds_api) and [`CDS - Cluster discovery service`](https://www.envoyproxy.io/envoy/configuration/cluster_manager/cds) is implemented
 
-### building
+### Configuration
+
+- `PORT` (env) - the HTTP port to listen on (example: `8877`)
+- `CONSUL_*` (env) - the default Consul environment variables is used when connecting to the Consul cluster. (e.g. `CONSUL_HTTP_ADDR`)
+
+### Building
 
 `make requirements` to install Go Vendor and fetch dependencies
 `make install` to build the binary (`consul-envoy`) into `${GOPATH}/bin`
 `make dist` to build platform specific binary into `./build/consul-enovy-${OS}-${ARCH}`
 
-### example envoy config
+### Example envoy config
 
 The configuration assume that this project is named `envoy-consul` in the Consul catalog and listens on port `8877`
 
