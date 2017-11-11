@@ -1,3 +1,9 @@
+## What
+
+This project aim to be a quick'n'dirty way to get Envoy and Consul talking nicely, so any Consul service URL can be routed through evnoy.
+
+The current code allows to route `*.service.consul` to the backends availble in the Consul catalog
+
 ### example envoy config
 
 ```json

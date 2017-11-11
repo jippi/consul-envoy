@@ -10,10 +10,6 @@ COMMIT		    ?=latest
 $(BUILD_DIR):
 	mkdir -p $@
 
-.PHONY: update
-update:
-	docker pull 093535234988.dkr.ecr.us-east-1.amazonaws.com/consul-envoy:latest
-
 .PHONY: install
 install:
 	go get github.com/kardianos/govendor
@@ -54,10 +50,3 @@ $(BINARIES): $(BUILD_DIR)/consul-envoy-%: $(BUILD_DIR)
 dist: install fmt vet
 	@echo "=> building ..."
 	$(MAKE) -j $(BINARIES)
-
-.PHONY: docker
-docker:
-	@echo "=> build and push Docker image ..."
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 govendor build -o build/consul-envoy-linux-amd64
-	docker build -f Dockerfile -t 093535234988.dkr.ecr.us-east-1.amazonaws.com/consul-envoy:$(COMMIT) .
-	docker push 093535234988.dkr.ecr.us-east-1.amazonaws.com/consul-envoy:$(COMMIT)
