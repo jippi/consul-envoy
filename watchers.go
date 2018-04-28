@@ -52,6 +52,7 @@ func (b *serviceBuilder) work() {
 	}
 
 	defer serviceResponse.Delete(b.service)
+	logger := log.WithField("service", b.service)
 
 	for {
 		select {
@@ -59,18 +60,19 @@ func (b *serviceBuilder) work() {
 			return
 
 		default:
-			log.Infof("Reading service health %s", b.service)
+			logger.Info("Reading service health")
 			backends, meta, err := b.client.Health().Service(b.service, "", true, q)
 			if err != nil {
-				fmt.Println(err)
+				logger.Error(err)
 				time.Sleep(1)
 				continue
 			}
+
 			if q.WaitIndex == meta.LastIndex {
-				log.Infof("Read service health %s (but no changes)", b.service)
+				logger.Infof("Read service health (but no changes)")
 				continue
 			}
-			log.Infof("Read service health %s (with changes)", b.service)
+			logger.Infof("Read service health (with changes)")
 
 			q.WaitIndex = meta.LastIndex
 
@@ -132,6 +134,8 @@ func clusterAndRouteBuilder(client *api.Client, servicesCh chan map[string][]str
 
 			for name := range services {
 				if _, ok := running[name]; !ok {
+					log.Infof("Discovered new service %s", name)
+
 					running[name] = &serviceBuilder{
 						lastSeen: time.Now(),
 						closeCh:  make(chan interface{}),
