@@ -2,31 +2,32 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
-	"net"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/gorilla/mux"
 	"github.com/hashicorp/consul/api"
+	log "github.com/sirupsen/logrus"
 )
 
-type host struct {
-	URL string `json:"url"`
+type ServiceDiscoveryResponse struct {
+	Hosts []ServiceHost `json:"hosts"`
 }
 
-type serviceHost struct {
-	IP   string `json:"ip_address"`
-	Port int    `json:"port"`
+type ServiceHost struct {
+	IP   string            `json:"ip_address"`
+	Port int               `json:"port"`
+	Tags map[string]string `json:"tags,omitempty"`
 }
 
-type sslContext struct {
+type ClusterDiscoveryResponse struct {
+	Clusters Clusters `json:"clusters"`
 }
 
-type clusters []cluster
+type Clusters []Cluster
 
-type cluster struct {
+type Cluster struct {
 	Name                     string `json:"name"`
 	Type                     string `json:"type"`
 	ServiceName              string `json:"service_name"`
@@ -35,19 +36,30 @@ type cluster struct {
 	LBtype                   string `json:"lb_type"`
 }
 
-type virtualHosts []virtualHost
+type RouteDiscoveryResponse struct {
+	VirtualHosts []VirtualHost `json:"virtual_hosts"`
+}
 
-type virtualHost struct {
+type VirtualHost struct {
 	Name    string   `json:"name"`
 	Domains []string `json:"domains"`
-	Routes  []route  `json:"routes"`
+	Routes  []Route  `json:"routes"`
 }
 
-type route struct {
-	Prefix       string `json:"prefix"`
-	Cluster      string `json:"cluster"`
-	UseWebsocket bool   `json:"use_websocket"`
+type Route struct {
+	Prefix       string                 `json:"prefix,omitempty"`
+	Path         string                 `json:"path,omitempty"`
+	Cluster      string                 `json:"cluster"`
+	UseWebsocket bool                   `json:"use_websocket"`
+	RetryPolicy  map[string]interface{} `json:"retry_policy,omitempty"`
 }
+
+var (
+	clusterResponse ClusterDiscoveryResponse
+	routeResponse   RouteDiscoveryResponse
+	serviceResponse sync.Map
+	consulDomain    string
+)
 
 // https://github.com/lyft/discovery
 func main() {
@@ -66,153 +78,36 @@ func main() {
 		log.Fatalf("Could not find 'self' from consul catalog: %s", err)
 	}
 
-	nodeIP, ok := node["Member"]["Addr"]
-	if !ok {
-		log.Fatal("Could not find node IP")
-	}
+	watchers(consul)
 
-	domain, ok := node["DebugConfig"]["DNSDomain"]
+	var ok bool
+	consulDomain, ok = node["DebugConfig"]["DNSDomain"].(string)
 	if !ok {
 		log.Fatal("Could not find consul domain")
 	}
 
 	router := mux.NewRouter()
 
-	// RDS - Route discovery service - https://www.envoyproxy.io/envoy/configuration/http_conn_man/rds
-	router.HandleFunc("/v1/routes/{route_config_name}/{service_cluster}/{service_node}", func(w http.ResponseWriter, r *http.Request) {
-		params := mux.Vars(r)
-		fmt.Printf("/v1/routes/%s/%s/%s\n", params["route_config_name"], params["service_cluster"], params["service_node"])
-
-		res := make([]virtualHost, 0)
-		seen := make(map[string]string)
-
-		catalog, _, _ := consul.Catalog().Node(params["service_node"], &api.QueryOptions{AllowStale: true})
-		for _, service := range catalog.Services {
-			serviceName := service.Service
-
-			if _, ok := seen[serviceName]; ok {
-				continue
-			}
-
-			seen[serviceName] = serviceName
-
-			vhost := virtualHost{
-				Name: serviceName,
-				Domains: []string{
-					fmt.Sprintf("%s.service.%s", serviceName, domain),
-					fmt.Sprintf("*.%s.service.%s", serviceName, domain),
-				},
-				Routes: []route{
-					route{
-						Cluster:      serviceName,
-						Prefix:       "/",
-						UseWebsocket: true,
-					},
-				},
-			}
-
-			res = append(res, vhost)
-		}
-
-		x := struct {
-			VirtualHosts []virtualHost `json:"virtual_hosts"`
-		}{res}
-		d, _ := json.Marshal(x)
-		w.Write(d)
-	})
-
-	// SDS - Service discovery service - https://www.envoyproxy.io/envoy/configuration/cluster_manager/sds_api
-	router.HandleFunc("/v1/registration/{service_name}", func(w http.ResponseWriter, r *http.Request) {
-		params := mux.Vars(r)
-		fmt.Printf("/v1/registration/%s\n", params["service_name"])
-
-		hosts := make([]serviceHost, 0)
-		checks, _, _ := consul.Health().Service(params["service_name"], "", true, &api.QueryOptions{AllowStale: true})
-
-		for _, entry := range checks {
-			// check if it's an valid IP
-			if ip := net.ParseIP(entry.Service.Address); ip != nil {
-				hosts = append(hosts, serviceHost{
-					IP:   entry.Service.Address,
-					Port: entry.Service.Port,
-				})
-				continue
-			}
-
-			// if not an IP, resolve the hostname
-			ips, err := net.LookupIP(entry.Service.Address)
-			if err != nil {
-				continue
-			}
-
-			// add reach resolved IP from the hostname to the registration
-			for _, ip := range ips {
-				hosts = append(hosts, serviceHost{
-					IP:   ip.String(),
-					Port: entry.Service.Port,
-				})
-			}
-		}
-
-		// consturct the valid response
-		response := struct {
-			Hosts []serviceHost `json:"hosts"`
-		}{hosts}
-
-		bytes, _ := json.Marshal(response)
-		w.Write(bytes)
-	})
-
-	// CDS - Cluster discovery service - https://www.envoyproxy.io/envoy/configuration/cluster_manager/cds
+	// CDS - Cluster discovery service - https://www.envoyproxy.io/docs/envoy/v1.5.0/api-v1/cluster_manager/cds#config-cluster-manager-cds-v1
 	router.HandleFunc("/v1/clusters/{service_cluster}/{service_node}", func(w http.ResponseWriter, r *http.Request) {
 		params := mux.Vars(r)
-		fmt.Printf("/v1/clusters/%s/%s\n", params["service_cluster"], params["service_node"])
+		log.Infof("/v1/clusters/%s/%s", params["service_cluster"], params["service_node"])
+		json.NewEncoder(w).Encode(clusterResponse)
+	})
 
-		// list of IP + Port for a given service name
-		clusterHosts := make(map[string]*[]host)
+	// RDS - Route discovery service - https://www.envoyproxy.io/docs/envoy/v1.5.0/configuration/http_conn_man/rds
+	router.HandleFunc("/v1/routes/{route_config_name}/{service_cluster}/{service_node}", func(w http.ResponseWriter, r *http.Request) {
+		params := mux.Vars(r)
+		log.Infof("/v1/routes/%s/%s/%s", params["route_config_name"], params["service_cluster"], params["service_node"])
+		json.NewEncoder(w).Encode(routeResponse)
+	})
 
-		// local clusters for the consul agent we are attached to
-		localClusters := make([]cluster, 0)
-
-		nodeCatalog, _, _ := consul.Catalog().Node(params["service_node"], &api.QueryOptions{AllowStale: true})
-		for _, service := range nodeCatalog.Services {
-			// Always construct the service host struct
-			serviceHost := host{
-				URL: fmt.Sprintf("tcp://%s:%d", nodeIP, service.Port),
-			}
-
-			// if we already have a host-map for the service in question,
-			// append the current host to the existing list rather than
-			// adding a new cluster
-			if hosts, ok := clusterHosts[service.Service]; ok {
-				*hosts = append(*hosts, serviceHost)
-				continue
-			}
-
-			// Create a new hostMap for the new cluster
-			clusterHosts[service.Service] = &[]host{serviceHost}
-
-			// Construct the envoy cluster config
-			c := cluster{
-				Name:             service.Service,
-				ServiceName:      service.Service,
-				Type:             "sds",
-				LBtype:           "least_request",
-				ConnectTimeoutMS: 2000,
-				// MaxRequestsPerConnection: 1, // disable keep-alive as a test
-			}
-
-			// Append the cluster
-			localClusters = append(localClusters, c)
-		}
-
-		// consturct the valid response
-		response := struct {
-			Clusters clusters `json:"clusters"`
-		}{localClusters}
-
-		bytes, _ := json.Marshal(response)
-		w.Write(bytes)
+	// SDS - Service discovery service - https://www.envoyproxy.io/docs/envoy/v1.5.0/api-v1/cluster_manager/sds#config-cluster-manager-sds-api
+	router.HandleFunc("/v1/registration/{service_name}", func(w http.ResponseWriter, r *http.Request) {
+		params := mux.Vars(r)
+		log.Infof("/v1/registration/%s", params["service_name"])
+		payload, _ := serviceResponse.Load(params["service_name"])
+		json.NewEncoder(w).Encode(payload)
 	})
 
 	if err := http.ListenAndServe("0.0.0.0:"+port, router); err != nil {
