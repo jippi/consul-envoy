@@ -36,7 +36,7 @@ func (c *serviceBuilder) work() {
 
 		default:
 			logger.Info("Reading service health")
-			backends, meta, err := c.client.Health().Service(c.service, "", true, q)
+			backends, meta, err := c.client.Catalog().Service(c.service, "", q)
 			if err != nil {
 				logger.Error(err)
 				time.Sleep(jitter(5 * time.Second))
@@ -53,18 +53,18 @@ func (c *serviceBuilder) work() {
 
 			hosts := make([]cds.Host, 0)
 			for _, entry := range backends {
-				if ip := net.ParseIP(entry.Service.Address); ip != nil {
+				if ip := net.ParseIP(entry.Address); ip != nil {
 					hosts = append(hosts, cds.Host{
-						IP:   entry.Service.Address,
-						Port: entry.Service.Port,
+						IP:   entry.ServiceAddress,
+						Port: entry.ServicePort,
 						Tags: &cds.HostTags{
-							AZ: entry.Node.Meta["aws_instance_availability-zone"],
+							AZ: entry.NodeMeta["aws_instance_availability-zone"],
 						},
 					})
 					continue
 				}
 
-				ips, err := net.LookupIP(entry.Service.Address)
+				ips, err := net.LookupIP(entry.Address)
 				if err != nil {
 					continue
 				}
@@ -72,9 +72,9 @@ func (c *serviceBuilder) work() {
 				for _, ip := range ips {
 					hosts = append(hosts, cds.Host{
 						IP:   ip.String(),
-						Port: entry.Service.Port,
+						Port: entry.ServicePort,
 						Tags: &cds.HostTags{
-							AZ: entry.Node.Meta["aws_instance_availability-zone"],
+							AZ: entry.NodeMeta["aws_instance_availability-zone"],
 						},
 					})
 				}

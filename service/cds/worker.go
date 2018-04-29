@@ -44,7 +44,7 @@ func (w *Worker) Start() {
 					ServiceName:      name,
 					Type:             "sds",
 					LBtype:           "least_request",
-					ConnectTimeoutMS: 180000,
+					ConnectTimeoutMS: 3 * time.Minute,
 					HealthCheck: &HealthCheck{
 						Type:               "tcp",
 						TimeoutMS:          3 * time.Millisecond,
