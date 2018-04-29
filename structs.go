@@ -3,15 +3,21 @@ package main
 // ServiceDiscoveryResponse ...
 // https://www.envoyproxy.io/docs/envoy/v1.6.0/api-v1/cluster_manager/sds.html?highlight=hosts#get--v1-registration-(string-%20service_name)
 type ServiceDiscoveryResponse struct {
-	Hosts []ServiceHost `json:"hosts"`
+	Hosts []Host `json:"hosts"`
 }
 
-// ServiceHost ...
+// Host ...
 // https://www.envoyproxy.io/docs/envoy/v1.6.0/api-v1/cluster_manager/sds.html?highlight=hosts#host-json
-type ServiceHost struct {
-	IP   string            `json:"ip_address"`
-	Port int               `json:"port"`
-	Tags map[string]string `json:"tags,omitempty"`
+type Host struct {
+	IP   string   `json:"ip_address"`
+	Port int      `json:"port"`
+	Tags HostTags `json:"tags,omitempty"`
+}
+
+type HostTags struct {
+	AZ                  string `json:"az,omitempty"`
+	Canary              bool   `json:"canary,omitempty"`
+	LoadBalancingWeight int    `json:"load_balancing_weight,omitempty"`
 }
 
 // ClusterDiscoveryResponse ...

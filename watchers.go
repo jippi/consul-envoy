@@ -78,10 +78,10 @@ func (b *serviceBuilder) work() {
 
 			q.WaitIndex = meta.LastIndex
 
-			hosts := make([]ServiceHost, 0)
+			hosts := make([]Host, 0)
 			for _, entry := range backends {
 				if ip := net.ParseIP(entry.Service.Address); ip != nil {
-					hosts = append(hosts, ServiceHost{
+					hosts = append(hosts, Host{
 						IP:   entry.Service.Address,
 						Port: entry.Service.Port,
 					})
@@ -94,7 +94,7 @@ func (b *serviceBuilder) work() {
 				}
 
 				for _, ip := range ips {
-					hosts = append(hosts, ServiceHost{
+					hosts = append(hosts, Host{
 						IP:   ip.String(),
 						Port: entry.Service.Port,
 					})
