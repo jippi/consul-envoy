@@ -12,12 +12,11 @@ $(BUILD_DIR):
 
 .PHONY: requirements
 requirements:
-	go get github.com/kardianos/govendor
-	govendor sync
+	dep ensure
 
 .PHONY: install
 install: requirements
-	go install
+	(cd cmd/consul-envoy && go install )
 
 .PHONY: fmt
 fmt:
@@ -43,7 +42,7 @@ vet: fmt
 BINARIES = $(addprefix $(BUILD_DIR)/consul-envoy-, $(GOBUILD))
 $(BINARIES): $(BUILD_DIR)/consul-envoy-%: $(BUILD_DIR)
 	@echo "=> building $@ ..."
-	GOOS=$(call GET_GOOS,$*) GOARCH=$(call GET_GOARCH,$*) CGO_ENABLED=0 govendor build -o $@
+	(cd cmd/consul-envoy && GOOS=$(call GET_GOOS,$*) GOARCH=$(call GET_GOARCH,$*) CGO_ENABLED=0 go build -o $@)
 
 .PHONY: dist
 dist: install fmt vet
