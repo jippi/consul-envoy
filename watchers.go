@@ -2,18 +2,13 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
 	"time"
 
 	"github.com/hashicorp/consul/api"
 	log "github.com/sirupsen/logrus"
 )
-
-func watchers(client *api.Client) {
-	servicesCh := make(chan map[string][]string, 0)
-	go servicesReader(client, servicesCh)
-	go clusterAndRouteBuilder(client, servicesCh)
-}
 
 func servicesReader(client *api.Client, servicesCh chan map[string][]string) {
 	query := &api.QueryOptions{
@@ -27,8 +22,8 @@ func servicesReader(client *api.Client, servicesCh chan map[string][]string) {
 		services, meta, err := client.Catalog().Services(query)
 		log.Info("Read services")
 		if err != nil {
-			fmt.Println(err)
-			time.Sleep(1 * time.Second)
+			log.Error(err)
+			time.Sleep(jitter(5 * time.Second))
 			continue
 		}
 
@@ -44,11 +39,17 @@ type serviceBuilder struct {
 	service  string
 }
 
+func jitter(d time.Duration) time.Duration {
+	const jitter = 0.30
+	jit := 1 + jitter*(rand.Float64()*2-1)
+	return time.Duration(jit * float64(d))
+}
+
 func (b *serviceBuilder) work() {
 	q := &api.QueryOptions{
 		AllowStale: true,
 		WaitIndex:  0,
-		WaitTime:   5 * time.Minute,
+		WaitTime:   jitter(5 * time.Minute),
 	}
 
 	defer serviceResponse.Delete(b.service)
@@ -57,6 +58,7 @@ func (b *serviceBuilder) work() {
 	for {
 		select {
 		case <-b.closeCh:
+			logger.Info("Shutting down builder")
 			return
 
 		default:
@@ -64,7 +66,7 @@ func (b *serviceBuilder) work() {
 			backends, meta, err := b.client.Health().Service(b.service, "", true, q)
 			if err != nil {
 				logger.Error(err)
-				time.Sleep(1)
+				time.Sleep(jitter(5 * time.Second))
 				continue
 			}
 
@@ -124,9 +126,7 @@ func clusterAndRouteBuilder(client *api.Client, servicesCh chan map[string][]str
 				delete(running, name)
 			}
 
-		default:
-			log.Info("Waiting for services")
-			services := <-servicesCh
+		case services := <-servicesCh:
 			log.Info("Got services")
 
 			clusters := make([]Cluster, 0)
