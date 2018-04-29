@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/hashicorp/consul/api"
@@ -64,10 +65,17 @@ func main() {
 	// SDS - Service discovery service - https://www.envoyproxy.io/docs/envoy/v1.6.0/api-v1/cluster_manager/sds#config-cluster-manager-sds-api
 	router.HandleFunc("/v1/registration/{service_name}", func(w http.ResponseWriter, r *http.Request) {
 		params := mux.Vars(r)
-		log.Infof("/v1/registration/%s", params["service_name"])
-		payload, _ := serviceResponse.Load(params["service_name"])
+		log.Debugf("/v1/registration/%s", params["service_name"])
+		payload, ok := serviceResponse.Load(params["service_name"])
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
 		json.NewEncoder(w).Encode(payload)
 	})
+
+	// wait for loaders to complete
+	time.Sleep(1 * time.Second)
 
 	// Listen on HTTP
 	if err := http.ListenAndServe("0.0.0.0:"+port, router); err != nil {

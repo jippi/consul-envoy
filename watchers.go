@@ -153,6 +153,16 @@ func clusterAndRouteBuilder(client *api.Client, servicesCh chan map[string][]str
 					Type:             "sds",
 					LBtype:           "least_request",
 					ConnectTimeoutMS: 180000,
+					HealthCheck: &HealthCheck{
+						Type:               "tcp",
+						TimeoutMS:          3 * time.Millisecond,
+						IntervalMS:         5 * time.Millisecond,
+						UnhealthyThreshold: 1,
+						HealthyThreshold:   1,
+						Send:               []map[string]string{},
+						Receive:            []map[string]string{},
+					},
+					OutlierDetection: &OutlierDetection{},
 				})
 
 				vhosts = append(vhosts, VirtualHost{
