@@ -57,6 +57,9 @@ func (c *serviceBuilder) work() {
 					hosts = append(hosts, cds.Host{
 						IP:   entry.Service.Address,
 						Port: entry.Service.Port,
+						Tags: &cds.HostTags{
+							AZ: entry.Node.Meta["aws_instance_availability-zone"],
+						},
 					})
 					continue
 				}
