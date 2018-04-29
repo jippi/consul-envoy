@@ -164,9 +164,9 @@ func clusterAndRouteBuilder(client *api.Client, servicesCh chan map[string][]str
 						Route{
 							Cluster: name,
 							Prefix:  "/",
-							RetryPolicy: map[string]interface{}{
-								"retry_on":    "5xx,connect-failure",
-								"num_retries": 1,
+							RetryPolicy: &RetryPolicy{
+								RetryOn:    "5xx,connect-failure",
+								NumRetries: 1,
 							},
 						},
 					},
