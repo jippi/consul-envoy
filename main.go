@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/hashicorp/consul/api"
@@ -73,9 +72,6 @@ func main() {
 		}
 		json.NewEncoder(w).Encode(payload)
 	})
-
-	// wait for loaders to complete
-	time.Sleep(1 * time.Second)
 
 	// Listen on HTTP
 	if err := http.ListenAndServe("0.0.0.0:"+port, router); err != nil {
