@@ -7,6 +7,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/consul/api"
+	"github.com/jippi/consul-envoy/service/cds"
+	"github.com/jippi/consul-envoy/service/rds"
+	"github.com/jippi/consul-envoy/service/sds"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -78,10 +81,10 @@ func (b *serviceBuilder) work() {
 
 			q.WaitIndex = meta.LastIndex
 
-			hosts := make([]Host, 0)
+			hosts := make([]cds.Host, 0)
 			for _, entry := range backends {
 				if ip := net.ParseIP(entry.Service.Address); ip != nil {
-					hosts = append(hosts, Host{
+					hosts = append(hosts, cds.Host{
 						IP:   entry.Service.Address,
 						Port: entry.Service.Port,
 					})
@@ -94,14 +97,14 @@ func (b *serviceBuilder) work() {
 				}
 
 				for _, ip := range ips {
-					hosts = append(hosts, Host{
+					hosts = append(hosts, cds.Host{
 						IP:   ip.String(),
 						Port: entry.Service.Port,
 					})
 				}
 			}
 
-			serviceResponse.Store(b.service, ServiceDiscoveryResponse{Hosts: hosts})
+			serviceResponse.Store(b.service, sds.Response{Hosts: hosts})
 		}
 	}
 }
@@ -129,8 +132,8 @@ func clusterAndRouteBuilder(client *api.Client, servicesCh chan map[string][]str
 		case services := <-servicesCh:
 			log.Info("Got services")
 
-			clusters := make([]Cluster, 0)
-			vhosts := make([]VirtualHost, 0)
+			clusters := make([]cds.Cluster, 0)
+			vhosts := make([]rds.VirtualHost, 0)
 
 			for name := range services {
 				if _, ok := running[name]; !ok {
@@ -147,13 +150,13 @@ func clusterAndRouteBuilder(client *api.Client, servicesCh chan map[string][]str
 
 				running[name].lastSeen = time.Now()
 
-				clusters = append(clusters, Cluster{
+				clusters = append(clusters, cds.Cluster{
 					Name:             name,
 					ServiceName:      name,
 					Type:             "sds",
 					LBtype:           "least_request",
 					ConnectTimeoutMS: 180000,
-					HealthCheck: &HealthCheck{
+					HealthCheck: &cds.HealthCheck{
 						Type:               "tcp",
 						TimeoutMS:          3 * time.Millisecond,
 						IntervalMS:         5 * time.Millisecond,
@@ -162,19 +165,19 @@ func clusterAndRouteBuilder(client *api.Client, servicesCh chan map[string][]str
 						Send:               []map[string]string{},
 						Receive:            []map[string]string{},
 					},
-					OutlierDetection: &OutlierDetection{},
+					OutlierDetection: &cds.OutlierDetection{},
 				})
 
-				vhosts = append(vhosts, VirtualHost{
+				vhosts = append(vhosts, rds.VirtualHost{
 					Name: name,
 					Domains: []string{
 						fmt.Sprintf("%s.service.%s", name, consulDomain),
 					},
-					Routes: []Route{
-						Route{
+					Routes: []rds.Route{
+						rds.Route{
 							Cluster: name,
 							Prefix:  "/",
-							RetryPolicy: &RetryPolicy{
+							RetryPolicy: &rds.RetryPolicy{
 								RetryOn:    "5xx,connect-failure",
 								NumRetries: 1,
 							},
@@ -183,8 +186,8 @@ func clusterAndRouteBuilder(client *api.Client, servicesCh chan map[string][]str
 				})
 			}
 
-			clusterResponse = ClusterDiscoveryResponse{Clusters: clusters}
-			routeResponse = RouteDiscoveryResponse{VirtualHosts: vhosts}
+			clusterResponse = cds.Response{Clusters: clusters}
+			routeResponse = rds.Response{VirtualHosts: vhosts}
 		}
 	}
 }

@@ -8,12 +8,14 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/hashicorp/consul/api"
+	"github.com/jippi/consul-envoy/service/cds"
+	"github.com/jippi/consul-envoy/service/rds"
 	log "github.com/sirupsen/logrus"
 )
 
 var (
-	clusterResponse ClusterDiscoveryResponse
-	routeResponse   RouteDiscoveryResponse
+	clusterResponse cds.Response
+	routeResponse   rds.Response
 	serviceResponse sync.Map
 	consulDomain    string
 )
