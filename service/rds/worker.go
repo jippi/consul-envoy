@@ -40,7 +40,7 @@ func (w *Worker) Start() {
 			vhosts := make([]VirtualHost, 0)
 
 			for name := range services {
-				vhosts = append(vhosts, VirtualHost{
+				vhost := VirtualHost{
 					Name: name,
 					Domains: []string{
 						fmt.Sprintf("%s.service.%s", name, w.consulDomain),
@@ -55,7 +55,16 @@ func (w *Worker) Start() {
 							},
 						},
 					},
-				})
+				}
+
+				if _, ok := services["api-users"]; ok && name == "api" {
+					vhost.Routes = append([]Route{{Cluster: "api-users", Prefix: "/users", RetryPolicy: vhost.Routes[0].RetryPolicy}}, vhost.Routes...)
+					vhost.Routes = append([]Route{{Cluster: "api-users", Prefix: "/oauth", RetryPolicy: vhost.Routes[0].RetryPolicy}}, vhost.Routes...)
+					vhost.Routes = append([]Route{{Cluster: "api-users", Prefix: "/me", RetryPolicy: vhost.Routes[0].RetryPolicy}}, vhost.Routes...)
+					vhost.Routes = append([]Route{{Cluster: "api-users", Prefix: "/emails", RetryPolicy: vhost.Routes[0].RetryPolicy}}, vhost.Routes...)
+				}
+
+				vhosts = append(vhosts, vhost)
 			}
 
 			w.response = Response{VirtualHosts: vhosts}
