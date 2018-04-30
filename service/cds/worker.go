@@ -45,15 +45,6 @@ func (w *Worker) Start() {
 					Type:             "sds",
 					LBtype:           "least_request",
 					ConnectTimeoutMS: 3 * time.Minute,
-					HealthCheck: &HealthCheck{
-						Type:               "tcp",
-						TimeoutMS:          3 * time.Millisecond,
-						IntervalMS:         5 * time.Millisecond,
-						UnhealthyThreshold: 1,
-						HealthyThreshold:   1,
-						Send:               []map[string]string{},
-						Receive:            []map[string]string{},
-					},
 					OutlierDetection: &OutlierDetection{},
 				})
 			}
