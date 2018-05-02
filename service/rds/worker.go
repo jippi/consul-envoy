@@ -2,6 +2,7 @@ package rds
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/consul/api"
 	log "github.com/sirupsen/logrus"
@@ -47,8 +48,9 @@ func (w *Worker) Start() {
 					},
 					Routes: []Route{
 						Route{
-							Cluster: name,
-							Prefix:  "/",
+							Cluster:   name,
+							Prefix:    "/",
+							TimeoutMS: 3 * time.Minute,
 							RetryPolicy: &RetryPolicy{
 								RetryOn:    "5xx,connect-failure",
 								NumRetries: 1,
